@@ -1,0 +1,63 @@
+version: "3.7"
+services:
+
+  postgres_keycloak:
+    container_name: fBpostgresKeycloak
+    image: postgres
+    volumes:
+      - postgresql_keycloak:/var/lib/postgresql/data
+      - ~/dumps/postgres/:/docker-entrypoint-initdb.d/
+    ports:
+      - "54321:5432"
+    environment:
+      - POSTGRES_USER=keycloak
+      - POSTGRES_PASSWORD=keycloak
+      - POSTGRES_DB=keycloak_db
+      - PGDATA=/var/lib/postgresql/data/pgdata
+#      network_mode: host
+
+  keycloak:
+    container_name: fBkeycloak
+    image: quay.io/keycloak/keycloak:16.1.1
+    volumes:
+      - ./config:/opt/jboss/keycloak/imports
+      - ./keycloak/flixb:/opt/jboss/keycloak/themes/newRealm
+      - ./keycloak/provider:/opt/jboss/keycloak/providers/
+    environment:
+      KEYCLOAK_IMPORT: /opt/jboss/keycloak/imports/realm-export.json -Dkeycloak.profile.feature.upload_scripts=enabled
+      KEYCLOAK_LOGLEVEL: DEBUG
+      DB_VENDOR: POSTGRES
+      DB_ADDR: postgres_keycloak
+      DB_PORT: 5432
+      DB_DATABASE: keycloak_db
+      DB_SCHEMA: public
+      DB_USER: keycloak
+      DB_PASSWORD: keycloak
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+      # Uncomment the line below if you want to specify JDBC parameters. The parameter below is just an example, and it shouldn't be used in production without knowledge. It is highly recommended that you read the PostgreSQL JDBC driver documentation in order to use it.
+      #JDBC_PARAMS: "ssl=true"
+    ports:
+      - "8180:8080"
+      - "9990:9990"
+    depends_on:
+      - postgres_keycloak
+#    network_mode: host
+
+
+  nginx:
+    image: nginx:latest
+    container_name: production_nginx
+    volumes:
+      - ./config/nginx:/etc/nginx/
+    ports:
+      - 80:80
+      - 443:443
+#    ports:
+#      - 9080:8080
+#      - 443:443
+#    network_mode: host
+
+volumes:
+  postgresql_keycloak: {}
+  pgadmin_data: {}
